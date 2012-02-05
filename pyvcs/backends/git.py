@@ -160,3 +160,23 @@ class Repository(BaseRepository):
             if name == filename:
                 return self._repo[hexsha].as_pretty_string()
         raise FileDoesNotExist
+    
+    def get_history(self,path,branch_revision=None):
+        '''
+        Returns list of log messages for the given path
+        '''
+        if path.endswith('/'):
+            path = path[:-1]        
+        file_log = []
+        if branch_revision is None:
+            revision = self._repo.head()
+        else:
+            revision = branch_revision
+        commits = [e.commit for e in self._repo.get_walker(include=[revision],paths=[path])]
+        for commit in commits:
+            dict_log = {'author':commit.committer.split(' ')[0], #returns name & email, so taking only name
+                        'log':commit.message,
+                        'date':datetime.fromtimestamp(commit.commit_time),
+                        'revnum':commit.id}
+            file_log.append(dict_log)
+        return file_log    
