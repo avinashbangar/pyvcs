@@ -113,13 +113,28 @@ class Repository(BaseRepository):
         commits = map(lambda o: self.get_commit_by_id(o.id), commits)
         return sorted(commits, key=attrgetter('time'), reverse=True)
 
-    def list_directory(self, path, revision=None):
+    def get_branch(self,revision):
+        '''
+        For the given revision, return branch name.
+        '''
+        branches_dikt = self._repo.get_refs()
+        for key, value in branches_dikt.items():
+            if key != 'HEAD' and value == revision:
+                return key.split('/')[2]
+        
+    def list_directory1(self, path, revision=None):
+        '''
+        List all folders and files for the given path.
+        '''
+        branch_name = self.get_branch(revision)
+        valid_path = path
         if revision is None:
-            commit = self._get_commit(self._repo.head())
+            return self.get_branches()
         elif revision is 'NULL':
             return ([],[])
         else:
             commit = self._get_commit(revision)
+            
         tree = self._repo[commit.tree]
         path = filter(bool, path.split(os.path.sep))
         while path:
@@ -132,13 +147,40 @@ class Repository(BaseRepository):
                     break
             if not found:
                 raise FolderDoesNotExist
-        files, folders = [], []
+        all_files_and_folders = []
+
         for mode, name, hexsha in tree.entries():
             if isinstance(self._repo.get_object(hexsha), objects.Tree):
-                folders.append(name)
+                folder_dikt = self._get_commit_details(name,valid_path,'directory',branch_name,revision)
+                all_files_and_folders.append(folder_dikt)
             elif isinstance(self._repo.get_object(hexsha), objects.Blob):
-                files.append(name)
-        return files, folders
+                file_dikt = self._get_commit_details(name,valid_path,'file',branch_name,revision)
+                all_files_and_folders.append(file_dikt)
+
+        return all_files_and_folders
+    
+    def _get_commit_details(self,name,valid_path,path_type,branch,revision):
+        '''
+        Creates commit dictionary for file and folder, dictionary contains
+        author, date, url_path, type(file/folder) branch_name. 
+        '''
+        full_path = valid_path+name
+        try:
+            commit_dict = self.get_history(full_path,revision)[0]
+        except:
+            pass
+        path_dict = {'name':name,
+                       'author':commit_dict['author'] or '',
+                       'date':commit_dict['date'] or '',
+                       'url_path': full_path,
+                       'type':path_type,
+                       'branch_name':branch
+                       }
+        if path_type == 'directory':
+            path_dict['url_path'] = path_dict['url_path'] + '/'
+        else:
+            path_dict['repos_path'] = full_path
+        return path_dict
 
     def file_contents(self, path, revision=None):
         if revision is None:

@@ -132,3 +132,16 @@ class Repository(BaseRepository):
             return self._repo.cat(file_path, rev)
         except pysvn.ClientError:
             raise FileDoesNotExist
+        
+        
+    def get_history(self, file_name):
+        '''
+        Returns list of log messages for the given path
+        '''
+        path = self.path + '/'+ file_name  
+        logs = self._repo.log(path)
+        file_log = []
+        for log in logs:
+            dict_log = {'author':log['author'],'log':log['message'],'date':datetime.fromtimestamp(log['date']),'revnum':log.revision.number}
+            file_log.append(dict_log)
+        return file_log
