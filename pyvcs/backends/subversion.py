@@ -17,8 +17,9 @@ class Repository(BaseRepository):
         self._repo = pysvn.Client(self.path.rstrip(os.path.sep))
 
     def _log_to_commit(self, log):
-        info = self._repo.info(self.path)
-        base, url = info['repos'], info['url']
+        info = self._repo.info2(self.path)
+        #base, url = info['repos'], info['url']
+        base, url = info[0][1].data['repos_root_URL'],info[0][1].data['URL']
         at = url[len(base):]
         commit_files = [cp_dict['path'][len(at)+1:] for cp_dict in log['changed_paths']]
 
@@ -80,7 +81,7 @@ class Repository(BaseRepository):
         log = self._repo.log(self.path, revision_start=revhead, revision_end=revhead)
 
         if since is None:
-            since = datetime.fromtimestamp(log['date']) - timedelta(days=5)
+            since = datetime.fromtimestamp(log[0]['date']) - timedelta(days=5)
 
         # Convert from datetime to float (seconds since unix epoch)
         utime = mktime(since.timetuple())
